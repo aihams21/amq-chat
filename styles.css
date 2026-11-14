@@ -701,8 +701,9 @@ kbd {
 .answer { min-width: 0; }
 
 .tool-btn {
-  display: inline-grid; place-items: center;
-  width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 10px;
+  font: inherit; font-size: 12px; white-space: nowrap;
   background: none; border: 1px solid var(--line);
   border-radius: 7px; color: var(--muted); cursor: pointer;
   transition: color .14s, border-color .14s;
@@ -761,6 +762,7 @@ kbd {
   .welcome-sub { margin-bottom: 30px; }
   .kbd-hint { display: none; }
   .composer-bar { justify-content: flex-end; }
+  .tool-btn { width: 30px; padding: 0; justify-content: center; font-size: 0; gap: 0; }
   .topbar-ctx { font-size: 10px; }
 }
 

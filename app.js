@@ -22,6 +22,7 @@ const state = {
   abort: null,
   serverKey: false,
   usedTokens: 0,
+  toolContext: [],
 };
 
 const K = {
@@ -61,7 +62,8 @@ const el = {
   settingsSheet: $('#settingsSheet'), settingsForm: $('#settingsForm'), personaToggle: $('#personaToggle'),
   sysInput: $('#sysInput'), saveSettings: $('#saveSettings'), clearAll: $('#clearAll'),
   transcript: $('#transcript'), messages: $('#messages'), welcome: $('#welcome'), starters: $('#starters'),
-  composer: $('#composer'), input: $('#input'), sendBtn: $('#sendBtn'), stopBtn: $('#stopBtn'), fetchBtn: $('#fetchBtn'),
+  composer: $('#composer'), input: $('#input'), sendBtn: $('#sendBtn'), stopBtn: $('#stopBtn'),
+  fetchBtn: $('#fetchBtn'), searchBtn: $('#searchBtn'),
   currentModel: $('#currentModel'), statusDot: $('#statusDot'), ctxTag: $('#ctxTag'), personaChip: $('#personaChip'),
   gauge: $('#gauge'), gaugeFill: $('#gaugeFill'), gaugeNum: $('#gaugeNum'), gaugeMax: $('#gaugeMax'),
   railHint: $('#railHint'), toast: $('#toast'),
@@ -343,6 +345,13 @@ function systemPrompt() {
   if (sk.length) parts.push('## المهارات المفعّلة\n' + sk.map(s => `### ${s.name}\n${s.prompt}`).join('\n\n'));
   const pl = activePlugins();
   if (pl.length) parts.push('## الإضافات المفعّلة\n' + pl.map(p => `### ${p.name}\n${p.prompt}`).join('\n\n'));
+  if (state.plugins.includes('websearch')) {
+    parts.push(`## أداة البحث الحقيقية
+عند حاجتك لمعلومة حديثة أو حقيقية من الإنترنت (إصدار، ثغرة، خبر، توثيق، سعر، شخص)، اكتب في نهاية ردّك سطراً وحده بالصيغة:
+[[SEARCH: استعلام دقيق]]
+ثم توقّف. سأجلب نتائج بحث حقيقية وأعيدها لك لتكمل الإجابة بالاستناد إليها مع ذكر المصادر.
+لا تخترع نتائج بحث ولا تدّعِ أنك بحثت إن لم تستخدم الأداة. البحث الحقيقي الوحيد المتاح هو هذه الأداة.`);
+  }
   if (state.system.trim()) parts.push('## تعليمات المستخدم\n' + state.system.trim());
   return parts.join('\n\n');
 }
@@ -606,7 +615,7 @@ function renderPlugins() {
       if (i >= 0) state.plugins.splice(i, 1); else state.plugins.push(p.id);
       persistPrefs();
       renderPlugins();
-      updateFetchBtn();
+      updateToolBtns();
       updateGauge();
     };
     el.pluginList.append(b);
@@ -614,14 +623,15 @@ function renderPlugins() {
   el.pluginsCount.textContent = String(state.plugins.length);
 }
 
-function updateFetchBtn() {
+function updateToolBtns() {
   el.fetchBtn.hidden = !state.plugins.includes('webfetch');
+  el.searchBtn.hidden = !state.plugins.includes('websearch');
 }
 
 el.pluginsBtn.onclick = () => { renderPlugins(); el.pluginsSheet.showModal(); };
 el.pluginsClose.onclick = () => el.pluginsSheet.close();
 el.pluginsDone.onclick = () => el.pluginsSheet.close();
-el.pluginsClear.onclick = () => { state.plugins = []; persistPrefs(); renderPlugins(); updateFetchBtn(); updateGauge(); };
+el.pluginsClear.onclick = () => { state.plugins = []; persistPrefs(); renderPlugins(); updateToolBtns(); updateGauge(); };
 
 /* ── مفتاح المزوّد ────────────────────────────────── */
 let sheetProvider = null;
@@ -692,6 +702,61 @@ el.testKey.onclick = async () => {
   }
 };
 
+/* ── بحث ويب حقيقي (بلا مفتاح) ────────────────────── */
+const JINA = 'https://r.jina.ai/';
+
+async function runWebSearch(q) {
+  const out = [];
+  try {
+    const res = await fetch(JINA + 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q), {
+      headers: { Accept: 'text/plain' },
+    });
+    if (res.ok) {
+      let t = await res.text();
+      t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\n{3,}/g, '\n\n').trim();
+      if (t) out.push('### DuckDuckGo\n' + t.slice(0, 9000));
+    }
+  } catch {}
+  try {
+    const res = await fetch(
+      'https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=5&srsearch=' +
+      encodeURIComponent(q)
+    );
+    if (res.ok) {
+      const j = await res.json();
+      const hits = j?.query?.search || [];
+      if (hits.length) {
+        out.push('### ويكيبيديا\n' + hits.map(h =>
+          `- ${h.title}: ${String(h.snippet || '').replace(/<[^>]+>/g, '')}`
+        ).join('\n'));
+      }
+    }
+  } catch {}
+  if (!out.length) return 'تعذّر تنفيذ البحث (شبكة أو حجب مؤقت). اطلب من المستخدم الرابط مباشرة.';
+  return out.join('\n\n').slice(0, 12000);
+}
+
+el.searchBtn.onclick = async () => {
+  const q = prompt('كلمة البحث:');
+  if (!q || !q.trim()) return;
+  const old = el.searchBtn.textContent;
+  el.searchBtn.disabled = true;
+  el.searchBtn.textContent = '…جارٍ البحث';
+  try {
+    const text = await runWebSearch(q.trim());
+    const block = `\n\n--- نتائج بحث: ${q.trim()} ---\n${text}\n--- نهاية النتائج ---\n`;
+    el.input.value = (el.input.value + block).trim();
+    autoGrow();
+    el.input.focus();
+    toast('أُضيفت نتائج البحث إلى الرسالة');
+  } catch (e) {
+    toast('تعذّر البحث: ' + e.message, true);
+  } finally {
+    el.searchBtn.disabled = false;
+    el.searchBtn.textContent = old;
+  }
+};
+
 /* ── جلب رابط ─────────────────────────────────────── */
 el.fetchBtn.onclick = async () => {
   const url = prompt('رابط الصفحة (https://…):');
@@ -731,7 +796,17 @@ async function probeServer() {
 }
 
 function payloadMessages() {
-  return [{ role: 'system', content: systemPrompt() }, ...state.messages];
+  const msgs = [{ role: 'system', content: systemPrompt() }, ...state.messages];
+  if (state.toolContext.length) {
+    const ctx = state.toolContext.slice(-3)
+      .map(c => `### نتائج بحث: ${c.q}\n${c.text}`)
+      .join('\n\n');
+    msgs.splice(1, 0, {
+      role: 'system',
+      content: '## سياق أدوات حقيقي (بحث ويب)\n' + ctx.slice(0, 24000),
+    });
+  }
+  return msgs;
 }
 
 async function send({ onDelta, onReason, signal }) {
@@ -861,21 +936,47 @@ async function submit(text) {
   };
 
   try {
-    const full = await send({
-      signal: ctrl.signal,
-      onDelta(piece) {
-        acc += piece;
-        if (first) { streamEl?.remove(); first = false; }
-        if (!raf) raf = requestAnimationFrame(paint);
-      },
-      onReason(piece) {
-        reasoning += piece;
-        paintReason();
-      },
-    });
+    let rounds = 0;
+    for (;;) {
+      let round = '';
+      const full = await send({
+        signal: ctrl.signal,
+        onDelta(piece) {
+          round += piece;
+          acc += piece;
+          if (first) { streamEl?.remove(); first = false; }
+          if (!raf) raf = requestAnimationFrame(paint);
+        },
+        onReason(piece) {
+          reasoning += piece;
+          paintReason();
+        },
+      });
+      round = full || round;
+
+      const m = round.match(/\[\[SEARCH:\s*([^\]\n]{2,200})\]\]/i);
+      if (!m || rounds >= 2 || ctrl.signal.aborted) break;
+
+      rounds++;
+      const q = m[1].trim();
+      acc = acc.replace(m[0], '').trimEnd();
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      answer.innerHTML = renderMarkdown(acc);
+      hint(`بحث ويب: ${q}`);
+      const results = await runWebSearch(q);
+      state.toolContext.push({ q, text: results, at: Date.now() });
+      state.messages.push({ role: 'assistant', content: acc || `أبحث عن: ${q}` });
+      state.messages.push({
+        role: 'user',
+        content: `أكمل الإجابة بالاعتماد على نتائج البحث المرفقة في سياق الأدوات. لا تكرر ما كتبته، واذكر المصادر.`,
+      });
+      saveThread();
+      acc += '\n\n';
+      if (!raf) raf = requestAnimationFrame(paint);
+    }
 
     if (raf) cancelAnimationFrame(raf);
-    acc = full || acc;
+    acc = acc.trim();
     if (!acc.trim()) {
       throw new Error(reasoning.trim()
         ? 'الموديل صرف كل max_tokens على التفكير. جرّب high أو أعد المحاولة.'
@@ -893,7 +994,7 @@ async function submit(text) {
     saveThread();
     updateGauge();
     setStatus('');
-    hint(`${p.name} · ${state.effort} · ${fmtTokens(estimateTokens(acc))} رمز`);
+    hint(`${p.name} · ${state.effort} · ${fmtTokens(estimateTokens(acc))} رمز${rounds ? ` · ${rounds} بحث` : ''}`);
   } catch (err) {
     if (raf) cancelAnimationFrame(raf);
     if (err.name === 'AbortError') {
@@ -1056,7 +1157,7 @@ el.scrim.onclick = closeRail;
   updateTopbar();
   updateEffort();
   renderThread();
-  updateFetchBtn();
+  updateToolBtns();
   el.skillsCount.textContent = String(state.skills.length);
   el.pluginsCount.textContent = String(state.plugins.length);
   el.skillMax.textContent = String(MAX_SKILLS);

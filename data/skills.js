@@ -1,10 +1,13 @@
 /* عُمق / AMQ — مكتبة المهارات
-   منقولة ومكثّفة من مهارات OpenCode المحلية + مهارات أمنية مخصّصة.
+   CORE_SKILLS: مهارات مكتوبة يدوياً بالعربية (أمن/كود/تشغيل/تخطيط).
+   OC_SKILLS: كل مهارات OpenCode المحلية (91) مولّدة في data/skills-oc.js.
    كل مهارة = تعليمات تُحقن في رسالة النظام عند تفعيلها. */
 
-export const MAX_SKILLS = 5;
+import { OC_SKILLS } from './skills-oc.js';
 
-export const SKILLS = [
+export const MAX_SKILLS = 12;
+
+const CORE_SKILLS = [
   /* ── أمن ─────────────────────────────────────────── */
   {
     id: 'pentest-web',
@@ -176,4 +179,11 @@ export const SKILLS = [
     prompt: `قبل أي كود يعتمد على مكتبة أو API: تحقق من الإصدار الحالي والتوقيع الفعلي (docs/changelog/types). لا تعتمد على ذاكرة قديمة. إذا لم تتأكد، قل ذلك واذكر ما تحتاج التحقق منه. اذكر رقم الإصدار الذي بنيت عليه الإجابة.` },
 ];
 
-export const SKILL_GROUPS = ['أمن', 'كود', 'تشغيل', 'تخطيط'];
+/* ترتيب المجموعات الموحّد: اليدوية أولاً ثم مكتبة OpenCode */
+const GROUP_ORDER = ['أمن', 'كود', 'تشغيل', 'تخطيط', 'تصميم', 'وثائق', 'بيانات', 'نشر', 'تداول', 'تسويق', 'ذكاء اصطناعي'];
+
+export const SKILLS = [...CORE_SKILLS, ...OC_SKILLS].sort(
+  (a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group) || a.name.localeCompare(b.name)
+);
+
+export const SKILL_GROUPS = GROUP_ORDER;
