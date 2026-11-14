@@ -1,0 +1,11 @@
+{
+  "name": "amq",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "عُمق — واجهة محادثة عربية عبر OpenRouter",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  }
+}
