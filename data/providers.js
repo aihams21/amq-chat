@@ -1,0 +1,221 @@
+/* عُمق / AMQ — مزودات DeepSeek
+   كل المزوّدين OpenAI-compatible. الحقل cors:
+   ok      = يسمح بالاتصال من المتصفح (مُتحقَّق)
+   local   = سيرفر محلي على جهازك
+   blocked = يحجب CORS → يحتاج خادم وسيط (لا يعمل من GitHub Pages)
+*/
+
+export const PROVIDERS = [
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    latin: 'openrouter.ai',
+    kind: 'ok',
+    base: 'https://openrouter.ai/api/v1',
+    keyUrl: 'https://openrouter.ai/keys',
+    keyPrefix: 'sk-or-v1-',
+    free: false,
+    reasoning: 'openrouter',
+    note: 'أكبر مجمّع. ديب سيك هنا مدفوع، ورصيد الحساب الجديد قد يكون صفراً. التفكير low/high/max يعمل فعلياً هنا.',
+    models: [
+      { id: 'deepseek/deepseek-v4.1-flash-1017', name: 'V4.1 Flash 1017', ctx: 1048576, price: '$0.038 / $0.50', free: false, def: true },
+      { id: 'deepseek/deepseek-v4.1-flash',      name: 'V4.1 Flash',      ctx: 1048576, price: '$0.051 / $0.203', free: false },
+      { id: 'deepseek/deepseek-v3.2',            name: 'V3.2',            ctx: 163840,  price: '$0.26 / $0.38', free: false },
+    ],
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    latin: 'api.deepseek.com',
+    kind: 'ok',
+    base: 'https://api.deepseek.com/v1',
+    keyUrl: 'https://platform.deepseek.com/api_keys',
+    keyPrefix: 'sk-',
+    free: false,
+    reasoning: 'none',
+    note: 'المزوّد الرسمي. الحساب الجديد يحصل على رصيد تجريبي. التفكير تلقائي في deepseek-reasoner.',
+    models: [
+      { id: 'deepseek-reasoner', name: 'Reasoner (تفكير)', ctx: 131072, price: 'رصيد تجريبي', free: false },
+      { id: 'deepseek-chat',     name: 'Chat',            ctx: 131072, price: 'رصيد تجريبي', free: false, def: true },
+    ],
+  },
+  {
+    id: 'groq',
+    name: 'Groq',
+    latin: 'api.groq.com',
+    kind: 'ok',
+    base: 'https://api.groq.com/openai/v1',
+    keyUrl: 'https://console.groq.com/keys',
+    keyPrefix: 'gsk_',
+    free: true,
+    reasoning: 'none',
+    note: 'طبقة مجانية سخية وسرعة عالية. ديب سيك هنا نسخ R1 المقطّرة (ليست V4.1).',
+    models: [
+      { id: 'deepseek-r1-distill-llama-70b', name: 'R1 Distill Llama 70B', ctx: 131072, price: 'مجاني', free: true, def: true },
+      { id: 'deepseek-r1-distill-qwen-32b',  name: 'R1 Distill Qwen 32B',  ctx: 131072, price: 'مجاني', free: true },
+    ],
+  },
+  {
+    id: 'cerebras',
+    name: 'Cerebras',
+    latin: 'api.cerebras.ai',
+    kind: 'ok',
+    base: 'https://api.cerebras.ai/v1',
+    keyUrl: 'https://cloud.cerebras.ai',
+    keyPrefix: 'csk-',
+    free: true,
+    reasoning: 'none',
+    note: 'استدلال سريع جداً على شرائح Wafer. طبقة مجانية بحدود يومية.',
+    models: [
+      { id: 'deepseek-r1-distill-llama-70b', name: 'R1 Distill Llama 70B', ctx: 65536, price: 'مجاني', free: true, def: true },
+    ],
+  },
+  {
+    id: 'together',
+    name: 'Together',
+    latin: 'api.together.xyz',
+    kind: 'ok',
+    base: 'https://api.together.xyz/v1',
+    keyUrl: 'https://api.together.ai/settings/api-keys',
+    keyPrefix: '',
+    free: false,
+    reasoning: 'none',
+    note: 'رصيد تجريبي عند التسجيل. يشغّل DeepSeek-R1 و V3 كاملين.',
+    models: [
+      { id: 'deepseek-ai/DeepSeek-R1', name: 'DeepSeek R1', ctx: 163840, price: 'مدفوع/تجريبي', free: false, def: true },
+      { id: 'deepseek-ai/DeepSeek-V3', name: 'DeepSeek V3', ctx: 131072, price: 'مدفوع/تجريبي', free: false },
+    ],
+  },
+  {
+    id: 'fireworks',
+    name: 'Fireworks',
+    latin: 'api.fireworks.ai',
+    kind: 'ok',
+    base: 'https://api.fireworks.ai/inference/v1',
+    keyUrl: 'https://fireworks.ai/account/api-keys',
+    keyPrefix: '',
+    free: false,
+    reasoning: 'none',
+    note: 'رصيد تجريبي. مسارات الموديلات تبدأ بـ accounts/fireworks/models/.',
+    models: [
+      { id: 'accounts/fireworks/models/deepseek-r1', name: 'DeepSeek R1', ctx: 163840, price: 'مدفوع/تجريبي', free: false, def: true },
+      { id: 'accounts/fireworks/models/deepseek-v3', name: 'DeepSeek V3', ctx: 131072, price: 'مدفوع/تجريبي', free: false },
+    ],
+  },
+  {
+    id: 'deepinfra',
+    name: 'DeepInfra',
+    latin: 'api.deepinfra.com',
+    kind: 'ok',
+    base: 'https://api.deepinfra.com/v1/openai',
+    keyUrl: 'https://deepinfra.com/dash/api_keys',
+    keyPrefix: '',
+    free: false,
+    reasoning: 'none',
+    note: 'من أرخص المزوّدين لديب سيك. رصيد تجريبي صغير عند التسجيل.',
+    models: [
+      { id: 'deepseek-ai/DeepSeek-R1', name: 'DeepSeek R1', ctx: 163840, price: 'رخيص', free: false, def: true },
+      { id: 'deepseek-ai/DeepSeek-V3', name: 'DeepSeek V3', ctx: 131072, price: 'رخيص', free: false },
+    ],
+  },
+  {
+    id: 'novita',
+    name: 'Novita',
+    latin: 'api.novita.ai',
+    kind: 'ok',
+    base: 'https://api.novita.ai/v3/openai',
+    keyUrl: 'https://novita.ai/settings/key-management',
+    keyPrefix: 'sk_',
+    free: false,
+    reasoning: 'none',
+    note: 'رصيد تجريبي عند التسجيل. يشغّل V3.1 و R1.',
+    models: [
+      { id: 'deepseek/deepseek-v3.1', name: 'DeepSeek V3.1', ctx: 131072, price: 'مدفوع/تجريبي', free: false, def: true },
+      { id: 'deepseek/deepseek-r1',   name: 'DeepSeek R1',   ctx: 163840, price: 'مدفوع/تجريبي', free: false },
+    ],
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama',
+    latin: 'localhost:11434',
+    kind: 'local',
+    base: 'http://localhost:11434/v1',
+    keyUrl: 'https://ollama.com/download',
+    keyPrefix: '',
+    free: true,
+    reasoning: 'none',
+    note: 'يعمل على جهازك بلا مفتاح ولا إنترنت. يحتاج ollama serve. النماذج الصغيرة فقط على 16GB RAM.',
+    models: [
+      { id: 'deepseek-r1:7b',  name: 'R1 7B (محلي)',  ctx: 65536, price: 'محلي', free: true, def: true },
+      { id: 'deepseek-r1:14b', name: 'R1 14B (محلي)', ctx: 65536, price: 'محلي', free: true },
+    ],
+  },
+  {
+    id: 'lmstudio',
+    name: 'LM Studio',
+    latin: 'localhost:1234',
+    kind: 'local',
+    base: 'http://localhost:1234/v1',
+    keyUrl: 'https://lmstudio.ai',
+    keyPrefix: '',
+    free: true,
+    reasoning: 'none',
+    note: 'سيرفر محلي متوافق مع OpenAI. شغّل Local Server من التطبيق.',
+    models: [
+      { id: 'deepseek-r1-distill-qwen-7b', name: 'R1 Distill Qwen 7B', ctx: 32768, price: 'محلي', free: true, def: true },
+    ],
+  },
+  {
+    id: 'nvidia',
+    name: 'NVIDIA NIM',
+    latin: 'integrate.api.nvidia.com',
+    kind: 'blocked',
+    base: 'https://integrate.api.nvidia.com/v1',
+    keyUrl: 'https://build.nvidia.com',
+    keyPrefix: 'nvapi-',
+    free: true,
+    reasoning: 'none',
+    note: 'مجاني بحدود، لكنه لا يرسل هيدر CORS → المتصفح يمنع الطلب. يحتاج خادم وسيط.',
+    models: [
+      { id: 'deepseek-ai/deepseek-r1', name: 'DeepSeek R1', ctx: 163840, price: 'مجاني', free: true, def: true },
+    ],
+  },
+  {
+    id: 'sambanova',
+    name: 'SambaNova',
+    latin: 'api.sambanova.ai',
+    kind: 'blocked',
+    base: 'https://api.sambanova.ai/v1',
+    keyUrl: 'https://cloud.sambanova.ai/apis',
+    keyPrefix: '',
+    free: true,
+    reasoning: 'none',
+    note: 'طبقة مجانية، لكن CORS محجوب → يحتاج خادم وسيط.',
+    models: [
+      { id: 'DeepSeek-R1', name: 'DeepSeek R1', ctx: 32768, price: 'مجاني', free: true, def: true },
+    ],
+  },
+  {
+    id: 'github',
+    name: 'GitHub Models',
+    latin: 'models.github.ai',
+    kind: 'blocked',
+    base: 'https://models.github.ai/inference',
+    keyUrl: 'https://github.com/settings/tokens',
+    keyPrefix: 'ghp_',
+    free: true,
+    reasoning: 'none',
+    note: 'مجاني بحصة يومية، لكن CORS محجوب → يحتاج خادم وسيط.',
+    models: [
+      { id: 'deepseek/DeepSeek-R1', name: 'DeepSeek R1', ctx: 65536, price: 'مجاني', free: true, def: true },
+    ],
+  },
+];
+
+export function providerOf(id) {
+  return PROVIDERS.find(p => p.id === id) || PROVIDERS[0];
+}
+
+export function defaultModelOf(provider) {
+  return (provider.models.find(m => m.def) || provider.models[0]).id;
+}

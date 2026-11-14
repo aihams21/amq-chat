@@ -34,6 +34,7 @@ export default async function handler(req, res) {
     top_p: typeof body.top_p === 'number' ? body.top_p : 1.0,
   };
   if (typeof body.max_tokens === 'number') payload.max_tokens = body.max_tokens;
+  if (body.reasoning && typeof body.reasoning === 'object') payload.reasoning = body.reasoning;
 
   let upstream;
   try {
